@@ -8,6 +8,7 @@
 #include <random>
 #include "math.h"
 #include "em.h"
+#include <iostream>
 
 typedef std::vector<std::pair<int, double>> histogram;
 
@@ -41,17 +42,6 @@ double exp_pdf( const int x, const double lambda ) {
 	return lambda * std::exp( -1 * lambda * x );
 }
 
-void trim( histogram& data_set ) {
-	double total = std::accumulate( data_set.begin(), data_set.end(), static_cast<double>( 0 ),
-		[]( double total, std::pair<int, double> y){ return total + y.second; } );
-	int i = 0;
-	double subset = 0;
-	for ( ; subset < 0.99*total; ++i ) {
-		subset += data_set[i].second;
-	}
-	data_set.erase( data_set.begin()+i, data_set.end() );
-}
-
 histogram read_in( const std::string& file_name ) {
 	try {
 		std::ifstream infile( file_name );
@@ -64,7 +54,6 @@ histogram read_in( const std::string& file_name ) {
 				data_set.emplace_back( std::pair<int, double>{ x , y } );
 			}
 		}
-		trim( data_set );
 		return data_set;
 	} catch( std::exception& e ) {
 		throw std::runtime_error( "Bad filename" );
@@ -100,6 +89,7 @@ double KL_Divergence( const histogram& real, const histogram& model ) {
 				continue;
 			} else {
 				value += KL_real[i].second*log( KL_real[i].second / model[i].second );
+
 				// value += - KL_real[i].second*log( KL_real[i].second / model[i].second ) + log( model[i].second );
 				// ***EM maximizes the difference between
 				// log-likelihood function of theta given x:
@@ -205,6 +195,10 @@ void find_theta( const std::string& file_name ) {
 		while ( !converged ) {
 			histogram mixture = expectation_step( data_set , theta_data );
 			new_theta = maximization_step( data_set, mixture );
+			double dive = fabs( theta_data.m_divergence - new_theta.m_divergence );
+			if ( dive != dive ) {
+				throw std::runtime_error( "divergence nan" );
+			}
 			if ( fabs( theta_data.m_divergence - new_theta.m_divergence ) < 0.00001 ) {
 				converged = true;
 				if ( theta_best.m_divergence > new_theta.m_divergence ) {
