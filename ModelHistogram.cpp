@@ -7,7 +7,7 @@
 #include <vector>
 #include <random>
 #include "math.h"
-#include "em.h"
+#include "ModelHistohram.h"
 #include <iostream>
 
 typedef std::vector<std::pair<int, double>> histogram;
