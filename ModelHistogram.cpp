@@ -10,36 +10,35 @@
 #include "ModelHistogram.h"
 #include <iostream>
 
-double normal_pdf( const int x, const double mu, const double sigma ) {
+double stat::normal_pdf( const int x, const double mu, const double sigma ) {
 	double a = ( x - mu ) / sigma;
-	double pdf = ( stat::INV_SQRT_2PI / sigma ) * std::exp( -0.5f * a * a );
-	return pdf;
+	return ( stat::INV_SQRT_2PI / sigma ) * std::exp( -0.5f * a * a );
 }
 
-double exp_pdf( const int x, const double lambda ) {
+double stat::exp_pdf( const int x, const double lambda ) {
 	return lambda * std::exp( -1 * lambda * x );
 }
 
-double bayes( double normal, double exp, double alpha ) {
+double stat::bayes( double normal, double exp, double alpha ) {
 	if ( fabs( alpha*normal - exp*( 1 - alpha ) ) < 0.00000000000001 ) {
 		return 0.5;
 	}
 	return alpha*normal/( alpha*normal + (1-alpha)*exp );
 }
 
-void normalize( histogram& abnormal ) {
-	double total = std::accumulate( abnormal.begin(), abnormal.end(), static_cast<double>( 0 ),
+void stat::normalize( histogram& abnormal ) {
+	double total = std::accumulate( abnormal.begin(), abnormal.end(), 0.0,
 		[]( double total, std::pair<int, double> y){ return total + y.second; } );
 	std::transform( abnormal.begin(), abnormal.end(), abnormal.begin(), [total]( std::pair<int, double>& x ) {
 		x.second = x.second/total;
 		return x; } );
 }
 
-double KL_Divergence( const histogram& real, const histogram& model ) {
+double stat::KL_Divergence( const histogram& real, const histogram& model ) {
 	if ( real.size() == model.size() ) {
 		double value = 0;
 		histogram KL_real( real );
-		double total = std::accumulate( real.begin(), real.end(), static_cast<double>( 0 ),
+		double total = std::accumulate( real.begin(), real.end(), 0.0,
 			[]( double total, std::pair<int, double> y){ return total + y.second; } );
 		std::transform( KL_real.begin(), KL_real.end(), KL_real.begin(), [total]( std::pair<int, double>& x ) {
 			x.second = x.second/total;
@@ -64,18 +63,17 @@ double KL_Divergence( const histogram& real, const histogram& model ) {
 	}
 }
 
-double normal_mean_expected( const histogram& data, const histogram& mixture ) {
+double stat::normal_mean_expected( const histogram& data, const histogram& mixture ) {
 	double mu = 0;
 	double mix = 0;
 	for ( size_t i = 0; i < data.size(); i++ ) {
 		mu += data[i].first*data[i].second*mixture[i].second;
 		mix += data[i].second*mixture[i].second;
 	}
-	mu /= mix;
-	return mu;
+	return mu/mix;
 }
 
-double normal_sigma_expected( const histogram& data, const histogram& mixture ) {
+double stat::normal_sigma_expected( const histogram& data, const histogram& mixture ) {
 	double mu = 0;
 	double mix = 0;
 	for ( size_t i = 0; i < data.size(); i++ ) {
@@ -88,21 +86,17 @@ double normal_sigma_expected( const histogram& data, const histogram& mixture ) 
 	for ( size_t i = 0; i < data.size(); i++ ) {
 		sigma += pow( data[i].first - mu, 2 )*data[i].second*mixture[i].second;
 	}
-	sigma /= mix;
-	sigma = sqrt( sigma );
-	return sigma;
+	return sqrt( sigma/mix );
 }
 
-double exp_lambda_expected( const histogram& data, const histogram& mixture ) {
+double stat::exp_lambda_expected( const histogram& data, const histogram& mixture ) {
 	double lambda = 0;
 	double mix = 0;
 	for ( size_t i = 0; i < data.size(); i++ ) {
 		lambda += data[i].first*data[i].second*( 1 - mixture[i].second );
 		mix += data[i].second*( 1 - mixture[i].second );
 	}
-	lambda /= mix;
-	lambda = 1/lambda;
-	return lambda;
+	return mix/lambda;
 }
 
 histogram read_in( const std::string& file_name ) {
@@ -114,7 +108,7 @@ histogram read_in( const std::string& file_name ) {
 		double y;
 		while ( infile >> x >> y ) {
 			if ( y != 0 ) {
-				data_set.emplace_back( std::pair<int, double>{ x , y } );
+				data_set.emplace_back( std::make_pair( x , y ) );
 			}
 		}
 		return data_set;
@@ -127,8 +121,8 @@ histogram read_in( const std::string& file_name ) {
 histogram simulate_dist( double mu, double sigma, double lambda, const histogram& mixture ) {
 	histogram simulation;
 	for ( size_t i = 0; i < mixture.size(); i++ ) {
-		simulation.emplace_back( std::pair<int, double> { mixture[i].first, mixture[i].second*stat::normal_pdf( mixture[i].first, mu, sigma ) +
-				( 1-mixture[i].second )*stat::exp_pdf( mixture[i].first, lambda ) } );
+		simulation.emplace_back( std::make_pair( mixture[i].first, mixture[i].second*stat::normal_pdf( mixture[i].first, mu, sigma ) +
+				( 1-mixture[i].second )*stat::exp_pdf( mixture[i].first, lambda ) ) );
 	}
 	stat::normalize( simulation );
 	return simulation;
@@ -171,7 +165,7 @@ histogram expectation_step( const histogram& data_set, const theta& theta_data )
 	for ( size_t i = 0; i < data_set.size(); i++ ) {
 		double normal = stat::normal_pdf( data_set[i].first, theta_data.m_mu, theta_data.m_sigma );
 		double exp = stat::exp_pdf( data_set[i].first, theta_data.m_lambda );
-		mixture.emplace_back( std::pair<int, double>{ data_set[i].first, stat::bayes( normal, exp, theta_data.m_normal_mixture ) } );
+		mixture.emplace_back( std::make_pair( data_set[i].first, stat::bayes( normal, exp, theta_data.m_normal_mixture ) ) );
 	}
 	return mixture;
 }
@@ -181,8 +175,7 @@ void find_theta( const std::string& file_name ) {
 	stat::normalize( data_set );
 	theta theta_best;
 
-	int count = 100;
-	while ( count-- ) {
+	for ( int i = 0; i < 100; ++i ) {
 		theta theta_data;
 		theta new_theta;
 
