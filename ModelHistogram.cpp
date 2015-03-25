@@ -38,11 +38,6 @@ double stat::KL_Divergence( const histogram& real, const histogram& model ) {
 	if ( real.size() == model.size() ) {
 		double value = 0;
 		histogram KL_real( real );
-		double total = std::accumulate( real.begin(), real.end(), 0.0,
-			[]( double total, std::pair<int, double> y){ return total + y.second; } );
-		std::transform( KL_real.begin(), KL_real.end(), KL_real.begin(), [total]( std::pair<int, double>& x ) {
-			x.second = x.second/total;
-			return x; } );
 		for ( size_t i = 0; i < real.size(); i++ ) {
 			if ( real[i].second == 0 || model[i].second == 0 ) {
 				continue;
