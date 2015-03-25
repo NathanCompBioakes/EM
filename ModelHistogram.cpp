@@ -1,4 +1,3 @@
-#include <iostream>
 #include <fstream>
 #include <algorithm>
 #include <stdexcept>
@@ -7,8 +6,8 @@
 #include <vector>
 #include <random>
 #include "math.h"
+#include "assert.h"
 #include "ModelHistogram.h"
-#include <iostream>
 
 double stat::normal_pdf( const int x, const double mu, const double sigma ) {
 	double a = ( x - mu ) / sigma;
@@ -35,27 +34,24 @@ void stat::normalize( histogram& abnormal ) {
 }
 
 double stat::KL_Divergence( const histogram& real, const histogram& model ) {
-	if ( real.size() == model.size() ) {
-		double value = 0;
-		histogram KL_real( real );
-		for ( size_t i = 0; i < real.size(); i++ ) {
-			if ( real[i].second == 0 || model[i].second == 0 ) {
-				continue;
-			} else {
-				value += KL_real[i].second*log( KL_real[i].second / model[i].second );
+	assert( real.size() == model.size() );
+	double value = 0;
+	histogram KL_real( real );
+	for ( size_t i = 0; i < real.size(); i++ ) {
+		if ( real[i].second == 0 || model[i].second == 0 ) {
+			continue;
+		} else {
+			value += KL_real[i].second*log( KL_real[i].second / model[i].second );
 
-				// value += - KL_real[i].second*log( KL_real[i].second / model[i].second ) + log( model[i].second );
-				// ***EM maximizes the difference between
-				// log-likelihood function of theta given x:
-				// log( L(theta|x) ) = log( P(x|theta) )
-				// and
-				// Kullback–Leibler divergence***
-			}
+			// value += - KL_real[i].second*log( KL_real[i].second / model[i].second ) + log( model[i].second );
+			// ***EM maximizes the difference between
+			// log-likelihood function of theta given x:
+			// log( L(theta|x) ) = log( P(x|theta) )
+			// and
+			// Kullback–Leibler divergence***
 		}
-		return value;
-	} else {
-		throw std::runtime_error( "KL_divergence: q and p are of differing lengths" );
 	}
+	return value;
 }
 
 double stat::normal_mean_expected( const histogram& data, const histogram& mixture ) {
@@ -165,7 +161,7 @@ histogram expectation_step( const histogram& data_set, const theta& theta_data )
 	return mixture;
 }
 
-void find_theta( const std::string& file_name ) {
+theta find_theta( const std::string& file_name ) {
 	histogram data_set = read_in( file_name );
 	stat::normalize( data_set );
 	theta theta_best;
@@ -194,6 +190,5 @@ void find_theta( const std::string& file_name ) {
 			theta_data = new_theta;
 		}
 	}
-	std::cout << "mu=" << theta_best.m_mu << " sigma=" << theta_best.m_sigma << " lambda=" << theta_best.m_lambda << " mix=" << theta_best.m_normal_mixture
-		<< " divergence=" << theta_best.m_divergence << std::endl;
+	return theta_best;
 }

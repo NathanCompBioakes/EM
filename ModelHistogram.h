@@ -43,4 +43,4 @@ histogram read_in( const std::string& file_name );
 
 histogram simulate_dist( double mu, double sigma, double lambda, const histogram& mixture );
 
-void find_theta( const std::string& file_name );
+theta find_theta( const std::string& file_name );
