@@ -10,102 +10,99 @@
 #include "ModelHistogram.h"
 #include <iostream>
 
-namespace stat {
-	double normal_pdf( const int x, const double mu, const double sigma ) {
-		const double inv_sqrt_2pi = 0.3989422804014327;
-		double a = ( x - mu ) / sigma;
-		double pdf = ( inv_sqrt_2pi / sigma ) * std::exp( -0.5f * a * a );
-		return pdf;
-	}
+double normal_pdf( const int x, const double mu, const double sigma ) {
+	double a = ( x - mu ) / sigma;
+	double pdf = ( stat::INV_SQRT_2PI / sigma ) * std::exp( -0.5f * a * a );
+	return pdf;
+}
 
-	double exp_pdf( const int x, const double lambda ) {
-		return lambda * std::exp( -1 * lambda * x );
-	}
+double exp_pdf( const int x, const double lambda ) {
+	return lambda * std::exp( -1 * lambda * x );
+}
 
-	double bayes( double normal, double exp, double alpha ) {
-		if ( fabs( alpha*normal - exp*( 1 - alpha ) ) < 0.00000000000001 ) {
-			return 0.5;
-		}
-		return alpha*normal/( alpha*normal + (1-alpha)*exp );
+double bayes( double normal, double exp, double alpha ) {
+	if ( fabs( alpha*normal - exp*( 1 - alpha ) ) < 0.00000000000001 ) {
+		return 0.5;
 	}
+	return alpha*normal/( alpha*normal + (1-alpha)*exp );
+}
 
-	void normalize( histogram& abnormal ) {
-		double total = std::accumulate( abnormal.begin(), abnormal.end(), static_cast<double>( 0 ),
+void normalize( histogram& abnormal ) {
+	double total = std::accumulate( abnormal.begin(), abnormal.end(), static_cast<double>( 0 ),
+		[]( double total, std::pair<int, double> y){ return total + y.second; } );
+	std::transform( abnormal.begin(), abnormal.end(), abnormal.begin(), [total]( std::pair<int, double>& x ) {
+		x.second = x.second/total;
+		return x; } );
+}
+
+double KL_Divergence( const histogram& real, const histogram& model ) {
+	if ( real.size() == model.size() ) {
+		double value = 0;
+		histogram KL_real( real );
+		double total = std::accumulate( real.begin(), real.end(), static_cast<double>( 0 ),
 			[]( double total, std::pair<int, double> y){ return total + y.second; } );
-		std::transform( abnormal.begin(), abnormal.end(), abnormal.begin(), [total]( std::pair<int, double>& x ) {
+		std::transform( KL_real.begin(), KL_real.end(), KL_real.begin(), [total]( std::pair<int, double>& x ) {
 			x.second = x.second/total;
 			return x; } );
-	}
+		for ( size_t i = 0; i < real.size(); i++ ) {
+			if ( real[i].second == 0 || model[i].second == 0 ) {
+				continue;
+			} else {
+				value += KL_real[i].second*log( KL_real[i].second / model[i].second );
 
-	double KL_Divergence( const histogram& real, const histogram& model ) {
-		if ( real.size() == model.size() ) {
-			double value = 0;
-			histogram KL_real( real );
-			double total = std::accumulate( real.begin(), real.end(), static_cast<double>( 0 ),
-				[]( double total, std::pair<int, double> y){ return total + y.second; } );
-			std::transform( KL_real.begin(), KL_real.end(), KL_real.begin(), [total]( std::pair<int, double>& x ) {
-				x.second = x.second/total;
-				return x; } );
-			for ( size_t i = 0; i < real.size(); i++ ) {
-				if ( real[i].second == 0 || model[i].second == 0 ) {
-					continue;
-				} else {
-					value += KL_real[i].second*log( KL_real[i].second / model[i].second );
-
-					// value += - KL_real[i].second*log( KL_real[i].second / model[i].second ) + log( model[i].second );
-					// ***EM maximizes the difference between
-					// log-likelihood function of theta given x:
-					// log( L(theta|x) ) = log( P(x|theta) )
-					// and
-					// Kullback–Leibler divergence***
-				}
+				// value += - KL_real[i].second*log( KL_real[i].second / model[i].second ) + log( model[i].second );
+				// ***EM maximizes the difference between
+				// log-likelihood function of theta given x:
+				// log( L(theta|x) ) = log( P(x|theta) )
+				// and
+				// Kullback–Leibler divergence***
 			}
-			return value;
-		} else {
-			throw std::runtime_error( "KL_divergence: q and p are of differing lengths" );
 		}
+		return value;
+	} else {
+		throw std::runtime_error( "KL_divergence: q and p are of differing lengths" );
 	}
+}
 
-	double normal_mean_expected( const histogram& data, const histogram& mixture ) {
-		double mu = 0;
-		double mix = 0;
-		for ( size_t i = 0; i < data.size(); i++ ) {
-			mu += data[i].first*data[i].second*mixture[i].second;
-			mix += data[i].second*mixture[i].second;
-		}
-		mu /= mix;
-		return mu;
+double normal_mean_expected( const histogram& data, const histogram& mixture ) {
+	double mu = 0;
+	double mix = 0;
+	for ( size_t i = 0; i < data.size(); i++ ) {
+		mu += data[i].first*data[i].second*mixture[i].second;
+		mix += data[i].second*mixture[i].second;
 	}
+	mu /= mix;
+	return mu;
+}
 
-	double normal_sigma_expected( const histogram& data, const histogram& mixture ) {
-		double mu = 0;
-		double mix = 0;
-		for ( size_t i = 0; i < data.size(); i++ ) {
-			mu += data[i].first*data[i].second*mixture[i].second;
-			mix += data[i].second*mixture[i].second;
-		}
-		mu /= mix;
-
-		double sigma = 0;
-		for ( size_t i = 0; i < data.size(); i++ ) {
-			sigma += pow( data[i].first - mu, 2 )*data[i].second*mixture[i].second;
-		}
-		sigma /= mix;
-		sigma = sqrt( sigma );
-		return sigma;
+double normal_sigma_expected( const histogram& data, const histogram& mixture ) {
+	double mu = 0;
+	double mix = 0;
+	for ( size_t i = 0; i < data.size(); i++ ) {
+		mu += data[i].first*data[i].second*mixture[i].second;
+		mix += data[i].second*mixture[i].second;
 	}
+	mu /= mix;
 
-	double exp_lambda_expected( const histogram& data, const histogram& mixture ) {
-		double lambda = 0;
-		double mix = 0;
-		for ( size_t i = 0; i < data.size(); i++ ) {
-			lambda += data[i].first*data[i].second*( 1 - mixture[i].second );
-			mix += data[i].second*( 1 - mixture[i].second );
-		}
-		lambda /= mix;
-		lambda = 1/lambda;
-		return lambda;
+	double sigma = 0;
+	for ( size_t i = 0; i < data.size(); i++ ) {
+		sigma += pow( data[i].first - mu, 2 )*data[i].second*mixture[i].second;
 	}
+	sigma /= mix;
+	sigma = sqrt( sigma );
+	return sigma;
+}
+
+double exp_lambda_expected( const histogram& data, const histogram& mixture ) {
+	double lambda = 0;
+	double mix = 0;
+	for ( size_t i = 0; i < data.size(); i++ ) {
+		lambda += data[i].first*data[i].second*( 1 - mixture[i].second );
+		mix += data[i].second*( 1 - mixture[i].second );
+	}
+	lambda /= mix;
+	lambda = 1/lambda;
+	return lambda;
 }
 
 histogram read_in( const std::string& file_name ) {
