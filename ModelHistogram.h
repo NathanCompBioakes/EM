@@ -24,15 +24,14 @@ namespace stat {
 	const double INV_SQRT_2PI = 0.3989422804014327;
 } // namespace stat
 
-class theta {
-	public:
-		theta();
-		theta( double mu, double sigma, double lambda, double mixture, double divergence );
-		double m_mu;
-		double m_sigma;
-		double m_lambda;
-		double m_normal_mixture;
-		double m_divergence;
+struct theta {
+	theta();
+	theta( double mu, double sigma, double lambda, double mixture, double divergence );
+	double m_mu;
+	double m_sigma;
+	double m_lambda;
+	double m_normal_mixture;
+	double m_divergence;
 };
 
 theta maximization_step( const histogram& data_set, const histogram& mixture );
