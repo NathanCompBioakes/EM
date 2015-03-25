@@ -1,5 +1,5 @@
 #include <string>
-#include "em.h"
+#include "ModelHistogram.h"
 
 int main( int argc, char* argv[] ) {
 	std::string file_in{ argv[1] };
