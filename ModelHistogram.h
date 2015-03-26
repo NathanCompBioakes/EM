@@ -4,7 +4,19 @@
 
 typedef std::vector<std::pair<int, double>> histogram;
 
-namespace stat {
+struct theta {
+	theta();
+	theta( double mu, double sigma, double lambda, double mixture, double divergence );
+	double m_mu;
+	double m_sigma;
+	double m_lambda;
+	double m_normal_mixture;
+	double m_divergence;
+};
+
+namespace ModelHistogram {
+	const double INV_SQRT_2PI = 0.3989422804014327;
+
 	double bayes( double normal, double exp, double alpha );
 
 	double KL_Divergence( const histogram& p, const histogram& q );
@@ -21,25 +33,13 @@ namespace stat {
 
 	double exp_pdf( const int x, const double lambda );
 
-	const double INV_SQRT_2PI = 0.3989422804014327;
+	theta maximization_step( const histogram& data_set, const histogram& mixture );
+
+	histogram expectation_step( const histogram& data_set, const theta& theta_data );
+
+	histogram read_in( const std::string& file_name );
+
+	histogram simulate_dist( double mu, double sigma, double lambda, const histogram& mixture );
+
+	theta find_theta( const std::string& file_name );
 } // namespace stat
-
-struct theta {
-	theta();
-	theta( double mu, double sigma, double lambda, double mixture, double divergence );
-	double m_mu;
-	double m_sigma;
-	double m_lambda;
-	double m_normal_mixture;
-	double m_divergence;
-};
-
-theta maximization_step( const histogram& data_set, const histogram& mixture );
-
-histogram expectation_step( const histogram& data_set, const theta& theta_data );
-
-histogram read_in( const std::string& file_name );
-
-histogram simulate_dist( double mu, double sigma, double lambda, const histogram& mixture );
-
-theta find_theta( const std::string& file_name );
